@@ -249,6 +249,28 @@ class ModAppeal(gl.Contract):
         self.evidence[case_id].append(json.dumps(record, sort_keys=True))
         self.evidence_seen[evidence_key] = True
 
+    def _verify_snapshot(self, source_url: str, expected_sha256: str) -> dict[str, str]:
+        """Consensus-check the bytes behind a committed HTTPS source."""
+        def fetch_fingerprint() -> dict[str, str]:
+            response = gl.nondet.web.get(source_url)
+            if response.status != 200:
+                return {"status": "UNAVAILABLE", "sha256": ""}
+            body = response.body
+            if len(body) == 0 or len(body) > 2_000_000:
+                return {"status": "UNAVAILABLE", "sha256": ""}
+            return {"status": "FETCHED", "sha256": hashlib.sha256(body).hexdigest()}
+
+        try:
+            binding = gl.eq_principle.strict_eq(fetch_fingerprint)
+        except Exception:
+            return {"status": "UNAVAILABLE", "sha256": ""}
+        actual = str(binding.get("sha256", "")).lower()
+        if str(binding.get("status", "")) != "FETCHED":
+            return {"status": "UNAVAILABLE", "sha256": actual}
+        if actual != expected_sha256.lower():
+            return {"status": "MISMATCH", "sha256": actual}
+        return {"status": "VERIFIED", "sha256": actual}
+
     def _review_case(self, case: dict[str, typing.Any], items: list[dict[str, typing.Any]]) -> dict[str, typing.Any]:
         policy = json.loads(
             self.policies[self._policy_key(case["community_id"], int(case["policy_version"]))]
@@ -389,6 +411,8 @@ MODAPPEAL_DATA_END
         fingerprint = rules_sha256.strip().lower()
         if len(fingerprint) != 64 or any(c not in "0123456789abcdef" for c in fingerprint):
             raise gl.vm.UserError("Policy fingerprint must be a 64-character SHA-256 hash")
+        if hashlib.sha256(clean_policy.encode()).hexdigest() != fingerprint:
+            raise gl.vm.UserError("Policy fingerprint does not match the committed policy text")
 
         policy = {
             "community_id": community_id,
@@ -536,7 +560,19 @@ MODAPPEAL_DATA_END
         if len(items) == 0:
             decision = _empty_decision("No public evidence was committed before the deadline.")
         else:
-            decision = self._review_case(case, items)
+            content_snapshot = self._verify_snapshot(case["content_url"], case["content_sha256"])
+            evidence_snapshots: list[str] = []
+            for item in items:
+                snapshot = self._verify_snapshot(item["source_url"], item["source_sha256"])
+                evidence_snapshots.append(snapshot["status"])
+            case["content_hash_status"] = content_snapshot["status"]
+            case["evidence_hash_statuses"] = json.dumps(evidence_snapshots)
+            if content_snapshot["status"] != "VERIFIED" or any(status != "VERIFIED" for status in evidence_snapshots):
+                decision = _empty_decision(
+                    "The committed content or evidence bytes could not be verified against their SHA-256 fingerprints."
+                )
+            else:
+                decision = self._review_case(case, items)
             if not _decision_is_valid(decision):
                 raise gl.vm.UserError("Validator consensus returned an invalid decision")
 

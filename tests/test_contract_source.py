@@ -39,6 +39,9 @@ class ContractSourceTests(unittest.TestCase):
         self.assertIn("Evidence fingerprint must be a 64-character SHA-256 hash", SOURCE)
         self.assertIn("This evidence URL was already submitted", SOURCE)
         self.assertIn("The referenced immutable policy version does not exist", SOURCE)
+        self.assertIn("Policy fingerprint does not match the committed policy text", SOURCE)
+        self.assertIn("The committed content or evidence bytes could not be verified", SOURCE)
+        self.assertIn("def _verify_snapshot", SOURCE)
 
     def test_settlement_is_separate_from_adjudication(self):
         self.assertIn('case["status"] = "ADJUDICATED"', SOURCE)

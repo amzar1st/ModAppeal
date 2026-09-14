@@ -1,5 +1,7 @@
 # ModAppeal — Decentralized Community Moderation & Appeal Protocol
 
+Live dashboard: https://modappeal.amzar1st96.chatgpt.site
+
 ModAppeal makes moderation appeals auditable without giving one administrator the final word. A community commits an immutable policy version, records the moderation action against that version, and lets the affected subject submit an appeal bond. Both parties can commit HTTPS evidence and counter-evidence. GenLayer validators independently inspect the same public sources and must agree on one categorical outcome:
 
 - `VIOLATION_CONFIRMED`

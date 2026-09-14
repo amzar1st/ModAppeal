@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#07111f" />
+    <meta name="description" content="ModAppeal — decentralized community moderation and appeal protocol." />
+    <title>ModAppeal · Community moderation appeals</title>
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="ambient ambient-one"></div>
+    <div class="ambient ambient-two"></div>
+    <header class="topbar shell">
+      <a class="brand" href="#top" aria-label="ModAppeal home">
+        <span class="brand-mark"><span></span><span></span><span></span></span>
+        <span>Mod<span>Appeal</span></span>
+      </a>
+      <nav class="nav-links" aria-label="Primary navigation">
+        <a class="active" href="#dashboard">Dashboard</a>
+        <a href="#workflow">Workflow</a>
+        <a href="#protocol">Protocol</a>
+      </nav>
+      <button class="wallet-button" id="connectWallet">Connect wallet</button>
+    </header>
+
+    <main id="top" class="shell">
+      <section class="hero" id="dashboard">
+        <div class="hero-copy">
+          <div class="eyebrow"><span class="pulse"></span> MODERATION APPEALS / STUDIONET</div>
+          <h1>When moderation<br /><em>gets disputed.</em></h1>
+          <p>ModAppeal commits the active policy, disputed content, and both sides of the evidence before GenLayer validators decide what actually happened.</p>
+          <div class="hero-actions">
+            <button class="primary-button" data-scroll="#case-tools">Open an appeal <span>↗</span></button>
+            <button class="ghost-button" data-scroll="#cases">Read public cases</button>
+          </div>
+        </div>
+        <div class="hero-card">
+          <div class="card-topline"><span>LIVE PROTOCOL</span><span class="status-chip" id="networkStatus">CHECKING</span></div>
+          <div class="hero-card-title">Fairness is a<br /><strong>state transition.</strong></div>
+          <div class="hero-metric"><span>Consensus outcomes</span><strong>04</strong></div>
+          <div class="outcome-list">
+            <span><i class="outcome-dot confirmed"></i>Violation confirmed</span>
+            <span><i class="outcome-dot overturned"></i>Action overturned</span>
+            <span><i class="outcome-dot partial"></i>Partial violation</span>
+            <span><i class="outcome-dot unclear"></i>Insufficient evidence</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="stats-grid" aria-label="Protocol statistics">
+        <article class="stat-card"><span>Communities</span><strong id="statCommunities">—</strong><small>registered on-chain</small></article>
+        <article class="stat-card"><span>Moderation cases</span><strong id="statCases">—</strong><small>public case history</small></article>
+        <article class="stat-card"><span>Appeals opened</span><strong id="statAppeals">—</strong><small>bond-backed reviews</small></article>
+        <article class="stat-card"><span>Active appeals</span><strong id="statActive">—</strong><small>evidence windows open</small></article>
+      </section>
+
+      <section class="section-block" id="cases">
+        <div class="section-heading">
+          <div><div class="kicker">PUBLIC CASE HISTORY</div><h2>Cases under review</h2></div>
+          <button class="outline-button" id="refreshCases">Refresh finalized state</button>
+        </div>
+        <div class="notice" id="liveNotice"><span class="notice-icon">i</span><span>Connecting to the canonical finalized contract state…</span></div>
+        <div class="case-table-wrap">
+          <table class="case-table">
+            <thead><tr><th>Case</th><th>Community</th><th>Action</th><th>Status</th><th>Verdict</th><th></th></tr></thead>
+            <tbody id="caseRows"><tr><td colspan="6" class="empty-cell">No live cases have been read yet.</td></tr></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="workspace-grid" id="case-tools">
+        <div class="section-block tool-panel">
+          <div class="kicker">WALLET WORKFLOW</div>
+          <h2>Move a case forward</h2>
+          <p class="muted">Every write is signed by the connected wallet and waits for a finalized receipt.</p>
+          <div class="tabs" role="tablist" aria-label="ModAppeal workflow tools">
+            <button class="tab active" data-tab="setup">Setup</button>
+            <button class="tab" data-tab="appeal">Appeal</button>
+            <button class="tab" data-tab="evidence">Evidence</button>
+            <button class="tab" data-tab="settle">Settle</button>
+          </div>
+
+          <form class="tool-form active" data-panel="setup" id="setupForm">
+            <label>Community ID<input name="communityId" value="civic-square" required /></label>
+            <label>Community name<input name="name" value="Civic Square" required /></label>
+            <label>Description<textarea name="description" rows="2" required>Community moderation with public rules and appealable actions.</textarea></label>
+            <button class="primary-button" type="submit">Create community <span>↗</span></button>
+          </form>
+          <div class="setup-subforms" data-panel="setup">
+            <form class="setup-subform" id="policyForm">
+              <div class="subform-title">Publish immutable policy</div>
+              <div class="form-split"><label>Community ID<input name="communityId" value="civic-square" required /></label><label>Version<input name="version" type="number" min="1" value="1" required /></label></div>
+              <label>Policy text<textarea name="policyText" rows="3" required>Promotional content must be clearly labeled, relevant to the community, and free of deceptive claims. Repeated unsolicited promotion may be removed.</textarea></label>
+              <label>Rules SHA-256<input name="sha256" placeholder="64-character fingerprint" required /></label>
+              <button class="outline-button" type="submit">Publish policy</button>
+            </form>
+            <form class="setup-subform" id="moderatorForm">
+              <div class="subform-title">Register moderator</div>
+              <label>Community ID<input name="communityId" value="civic-square" required /></label>
+              <label>Moderator wallet<input name="moderator" placeholder="0x…" required /></label>
+              <button class="outline-button" type="submit">Register moderator</button>
+            </form>
+            <form class="setup-subform" id="recordForm">
+              <div class="subform-title">Record moderation action</div>
+              <label>Case ID<input name="caseId" placeholder="case-001" required /></label>
+              <div class="form-split"><label>Community ID<input name="communityId" value="civic-square" required /></label><label>Policy version<input name="version" type="number" min="1" value="1" required /></label></div>
+              <label>Subject wallet<input name="subject" placeholder="0x…" required /></label>
+              <label>Action type<input name="actionType" value="SUSPENSION" required /></label>
+              <label>Content URL<input name="contentUrl" type="url" placeholder="https://example.org/post" required /></label>
+              <label>Content SHA-256<input name="contentSha256" placeholder="64-character fingerprint" required /></label>
+              <label>Moderator reason<textarea name="reason" rows="2" required>Content appears to be undisclosed promotion.</textarea></label>
+              <button class="outline-button" type="submit">Record action</button>
+            </form>
+          </div>
+          <form class="tool-form" data-panel="appeal" id="appealForm">
+            <label>Case ID<input name="caseId" placeholder="case-001" required /></label>
+            <label>Deadline (seconds from now)<input name="deadlineSeconds" type="number" min="30" value="90" required /></label>
+            <label>Appeal bond (GEN)<input name="bond" type="number" min="0.001" step="0.001" value="0.001" required /></label>
+            <button class="primary-button" type="submit">Open bonded appeal <span>↗</span></button>
+          </form>
+          <form class="tool-form" data-panel="evidence" id="evidenceForm">
+            <label>Case ID<input name="caseId" placeholder="case-001" required /></label>
+            <label>Evidence URL<input name="url" type="url" placeholder="https://example.org/rule" required /></label>
+            <label>SHA-256 commitment<input name="sha256" placeholder="64-character fingerprint" required /></label>
+            <label>Note<textarea name="note" rows="2" placeholder="What does this source establish?" required></textarea></label>
+            <div class="form-split"><button class="primary-button" type="submit" data-side="appellant">Submit evidence <span>↗</span></button><button class="outline-button" type="button" id="counterEvidence">Submit counter-evidence</button></div>
+          </form>
+          <form class="tool-form" data-panel="settle" id="settleForm">
+            <label>Case ID<input name="caseId" placeholder="case-001" required /></label>
+            <div class="form-split"><button class="primary-button" type="submit" data-action="adjudicate">Adjudicate <span>↗</span></button><button class="outline-button" type="button" id="finalizeCase">Finalize</button></div>
+            <button class="outline-button full" type="button" id="claimBond">Claim available bond</button>
+          </form>
+          <div class="action-log" id="actionLog" role="status">Connect a wallet to enable signed actions.</div>
+        </div>
+
+        <aside class="section-block evidence-panel" id="workflow">
+          <div class="kicker">HOW IT WORKS</div>
+          <h2>Evidence before authority.</h2>
+          <div class="step"><span>01</span><div><strong>Commit the rule</strong><p>The policy version active at the time of moderation is stored with the case.</p></div></div>
+          <div class="step"><span>02</span><div><strong>Open the appeal</strong><p>The moderated subject locks a bond and gets a fixed evidence window.</p></div></div>
+          <div class="step"><span>03</span><div><strong>Compare both sides</strong><p>Appellant and moderator commit HTTPS sources and fingerprints.</p></div></div>
+          <div class="step"><span>04</span><div><strong>Settle deterministically</strong><p>Validator agreement selects one outcome; the contract pays the recorded credit.</p></div></div>
+        </aside>
+      </section>
+
+      <section class="section-block read-panel" id="protocol">
+        <div class="section-heading"><div><div class="kicker">PUBLIC READ</div><h2>Inspect a finalized result</h2></div><span class="mono-label">LATEST_FINAL</span></div>
+        <div class="read-row"><input id="readCaseId" placeholder="Enter a case ID" /><button class="outline-button" id="readCase">Read case</button></div>
+        <pre id="readOutput" class="read-output">No case selected.</pre>
+      </section>
+    </main>
+
+    <footer class="footer shell"><div class="brand small"><span class="brand-mark"><span></span><span></span><span></span></span><span>Mod<span>Appeal</span></span></div><span>Policy-grounded appeals for communities, marketplaces, and agent networks.</span><span class="footer-meta">PUBLIC / CONSENSUS / SETTLEMENT</span></footer>
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>

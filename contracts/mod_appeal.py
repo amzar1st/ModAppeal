@@ -250,38 +250,59 @@ class ModAppeal(gl.Contract):
         self.evidence_seen[evidence_key] = True
 
     def _verify_snapshot(self, source_url: str, expected_sha256: str) -> dict[str, str]:
-        """Consensus-check the bytes behind a committed HTTPS source."""
+        """Consensus-check and return text from the committed HTTPS bytes."""
         def fetch_fingerprint() -> dict[str, str]:
             response = gl.nondet.web.get(source_url)
             if response.status != 200:
-                return {"status": "UNAVAILABLE", "sha256": ""}
+                return {"status": "UNAVAILABLE", "sha256": "", "text": ""}
             body = response.body
             if len(body) == 0 or len(body) > 2_000_000:
-                return {"status": "UNAVAILABLE", "sha256": ""}
-            return {"status": "FETCHED", "sha256": hashlib.sha256(body).hexdigest()}
+                return {"status": "UNAVAILABLE", "sha256": "", "text": ""}
+            try:
+                verified_text = body[:MAX_SOURCE_CHARS].decode("utf-8")
+            except Exception:
+                verified_text = str(body[:MAX_SOURCE_CHARS])
+            return {
+                "status": "FETCHED",
+                "sha256": hashlib.sha256(body).hexdigest(),
+                "text": verified_text,
+            }
 
         try:
             binding = gl.eq_principle.strict_eq(fetch_fingerprint)
         except Exception:
-            return {"status": "UNAVAILABLE", "sha256": ""}
+            return {"status": "UNAVAILABLE", "sha256": "", "text": ""}
         actual = str(binding.get("sha256", "")).lower()
         if str(binding.get("status", "")) != "FETCHED":
-            return {"status": "UNAVAILABLE", "sha256": actual}
+            return {"status": "UNAVAILABLE", "sha256": actual, "text": ""}
         if actual != expected_sha256.lower():
-            return {"status": "MISMATCH", "sha256": actual}
-        return {"status": "VERIFIED", "sha256": actual}
+            return {"status": "MISMATCH", "sha256": actual, "text": ""}
+        return {
+            "status": "VERIFIED",
+            "sha256": actual,
+            "text": str(binding.get("text", ""))[:MAX_SOURCE_CHARS],
+        }
 
-    def _review_case(self, case: dict[str, typing.Any], items: list[dict[str, typing.Any]]) -> dict[str, typing.Any]:
+    def _review_case(
+        self,
+        case: dict[str, typing.Any],
+        items: list[dict[str, typing.Any]],
+        disputed_content: str,
+        evidence_texts: list[str],
+    ) -> dict[str, typing.Any]:
         policy = json.loads(
             self.policies[self._policy_key(case["community_id"], int(case["policy_version"]))]
         )
+        disputed_content = disputed_content.replace(
+            "MODAPPEAL_DATA_START", "[marker removed]"
+        )
+        disputed_content = disputed_content.replace(
+            "MODAPPEAL_DATA_END", "[marker removed]"
+        )
+
         rendered_sources = ""
         for index, item in enumerate(items):
-            try:
-                rendered = gl.nondet.web.render(item["source_url"], mode="text")
-                rendered = str(rendered)[:MAX_SOURCE_CHARS]
-            except Exception:
-                rendered = "[The validator could not retrieve this source.]"
+            rendered = evidence_texts[index][:MAX_SOURCE_CHARS]
             rendered = rendered.replace("MODAPPEAL_DATA_START", "[marker removed]")
             rendered = rendered.replace("MODAPPEAL_DATA_END", "[marker removed]")
             rendered_sources += (
@@ -330,6 +351,8 @@ Policy text: {policy["policy_text"]}
 Policy rules fingerprint: {policy["rules_sha256"]}
 Disputed content URL: {case["content_url"]}
 Disputed content fingerprint: {case["content_sha256"]}
+Retrieved disputed content:
+{disputed_content}
 Recorded action: {case["action_type"]}
 Moderator reason: {case["moderator_reason"]}
 Appellant: {case["appellant"]}
@@ -561,18 +584,25 @@ MODAPPEAL_DATA_END
             decision = _empty_decision("No public evidence was committed before the deadline.")
         else:
             content_snapshot = self._verify_snapshot(case["content_url"], case["content_sha256"])
-            evidence_snapshots: list[str] = []
+            evidence_statuses: list[str] = []
+            evidence_texts: list[str] = []
             for item in items:
                 snapshot = self._verify_snapshot(item["source_url"], item["source_sha256"])
-                evidence_snapshots.append(snapshot["status"])
+                evidence_statuses.append(snapshot["status"])
+                evidence_texts.append(snapshot["text"])
             case["content_hash_status"] = content_snapshot["status"]
-            case["evidence_hash_statuses"] = json.dumps(evidence_snapshots)
-            if content_snapshot["status"] != "VERIFIED" or any(status != "VERIFIED" for status in evidence_snapshots):
+            case["evidence_hash_statuses"] = json.dumps(evidence_statuses)
+            if content_snapshot["status"] != "VERIFIED" or any(status != "VERIFIED" for status in evidence_statuses):
                 decision = _empty_decision(
                     "The committed content or evidence bytes could not be verified against their SHA-256 fingerprints."
                 )
             else:
-                decision = self._review_case(case, items)
+                decision = self._review_case(
+                    case,
+                    items,
+                    content_snapshot["text"],
+                    evidence_texts,
+                )
             if not _decision_is_valid(decision):
                 raise gl.vm.UserError("Validator consensus returned an invalid decision")
 

@@ -1,0 +1,40 @@
+{
+  "network": "studionet",
+  "contractAddress": "0x5f4d4256736DC7B9288F4c02796c6A4c1b4B47c2",
+  "communityId": "modappeal-final-20260922",
+  "caseId": "case-final-20260922",
+  "result": {
+    "status": "FINALIZED",
+    "verdict": "ACTION_OVERTURNED",
+    "confidence": 100,
+    "contentHashStatus": "VERIFIED",
+    "evidenceHashStatuses": ["VERIFIED", "VERIFIED"],
+    "appellantBondClaimed": true
+  },
+  "protocolStats": {
+    "totalCommunities": 1,
+    "totalPolicies": 1,
+    "totalCases": 1,
+    "totalAppeals": 1,
+    "totalAdjudicated": 1,
+    "totalFinalized": 1,
+    "activeAppeals": 0,
+    "totalBondedWei": "1000000000000000000",
+    "totalPaidWei": "1000000000000000000",
+    "contractBalanceWei": "0"
+  },
+  "transactions": {
+    "deploy": "0x0b25ce86ed02f6c461622d55a0f1dea0c9c3b4cf5d4708ca348980619876e528",
+    "createCommunity": "0x22bd2c9608226f1dc453ccfb9ac10e4710d6ac5282e3e32bf79357d770f32420",
+    "publishPolicy": "0xe7343cda2cd06688d0d647e19ac1f98d79537fe2c425375d125b754a0c92f138",
+    "registerModerator": "0xb5b59ad9879cef1d695b3d9f437862dda7fbbc28ce50ea5997469fb40e439996",
+    "recordAction": "0x74398a9f701f1caefb4472c0b9096be4756264bfff2b7af83bf6e413b6ad9f8a",
+    "openAppeal": "0xaab846ef47c0ea54d3ae4866091923be9f6a51ca686c4a85c9341c7504ad12a2",
+    "submitEvidence": "0xdfef3c87988ec147318273c4fb9a08a72dcfc6b17914444eab796caf09c4f67c",
+    "submitCounterEvidence": "0x24b67c8bbc63d5382d01e76c821433a1de28e4229f3c3dfdfd39dc17e9c576ec",
+    "adjudicate": "0xeab6ca73e51559b0d15b786f126e40393694445085f4fc460972ac35b0a41253",
+    "finalize": "0xbd34baca35ab53319d4aabc6798ffb20d4c24d205c4e75d68d52722a4de755b6",
+    "claimBond": "0x002624f942e68d8d081fd675b9f734adfdb7d729df0004c96dbef70bd214a8bb"
+  },
+  "verifiedAt": "2026-09-22T08:58:58Z"
+}

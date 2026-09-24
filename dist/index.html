@@ -124,6 +124,7 @@
             <button class="primary-button" type="submit">Open bonded appeal <span>↗</span></button>
           </form>
           <form class="tool-form" data-panel="evidence" id="evidenceForm">
+            <p class="muted">Each side has six reserved slots. Unavailable or mismatched sources are excluded and charged to the party that submitted them.</p>
             <label>Case ID<input name="caseId" placeholder="case-001" required /></label>
             <label>Evidence URL<input name="url" type="url" placeholder="https://example.org/rule" required /></label>
             <label>SHA-256 commitment<input name="sha256" placeholder="64-character fingerprint" required /></label>
@@ -143,8 +144,8 @@
           <h2>Evidence before authority.</h2>
           <div class="step"><span>01</span><div><strong>Commit the rule</strong><p>The policy version active at the time of moderation is stored with the case.</p></div></div>
           <div class="step"><span>02</span><div><strong>Open the appeal</strong><p>The moderated subject locks a bond and gets a fixed evidence window.</p></div></div>
-          <div class="step"><span>03</span><div><strong>Compare both sides</strong><p>Appellant and moderator commit HTTPS sources and fingerprints.</p></div></div>
-          <div class="step"><span>04</span><div><strong>Settle deterministically</strong><p>Validator agreement selects one outcome; the contract pays the recorded credit.</p></div></div>
+          <div class="step"><span>03</span><div><strong>Reserve both sides</strong><p>Appellant and moderator each receive six evidence slots; neither can crowd out the other.</p></div></div>
+          <div class="step"><span>04</span><div><strong>Attribute faults</strong><p>Bad commitments are excluded and charged to their submitter before deterministic settlement.</p></div></div>
         </aside>
       </section>
 

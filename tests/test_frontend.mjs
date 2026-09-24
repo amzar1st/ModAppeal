@@ -12,7 +12,9 @@ assert.match(html, /PUBLIC CASE HISTORY/);
 assert.match(app, /get_case/);
 assert.match(app, /LATEST_FINAL/);
 assert.match(app, /TransactionStatus\.FINALIZED/);
-assert.match(app, /0x5f4d4256736DC7B9288F4c02796c6A4c1b4B47c2/);
+assert.match(app, /0x1Bc7cB40DB3781E835Ba23fF7E3a76698dF71d13/);
+assert.match(html, /six reserved slots/i);
+assert.match(html, /charged to the party/i);
 for (const method of ["create_community", "publish_policy", "register_moderator", "record_action", "open_appeal", "submit_evidence", "submit_counter_evidence", "adjudicate", "finalize", "claim_bond"]) {
   assert.match(app, new RegExp(method));
 }

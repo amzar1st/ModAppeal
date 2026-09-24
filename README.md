@@ -1,8 +1,8 @@
 # ModAppeal — Decentralized Community Moderation & Appeal Protocol
 
 - Live dashboard: https://modappeal.amzar1st96.chatgpt.site
-- Studionet contract: https://explorer-studio.genlayer.com/address/0x5f4d4256736DC7B9288F4c02796c6A4c1b4B47c2
-- Deployment transaction: https://explorer-studio.genlayer.com/tx/0x0b25ce86ed02f6c461622d55a0f1dea0c9c3b4cf5d4708ca348980619876e528
+- Studionet contract: https://explorer-studio.genlayer.com/address/0x1Bc7cB40DB3781E835Ba23fF7E3a76698dF71d13
+- Deployment transaction: https://explorer-studio.genlayer.com/tx/0x215d3b46b03dfcdd696058082461ef872e491192a064191d78acfb846337cc03
 
 ModAppeal makes moderation appeals auditable without giving one administrator the final word. A community commits an immutable policy version, records the moderation action against that version, and lets the affected subject submit an appeal bond. Both parties can commit HTTPS evidence and counter-evidence. GenLayer validators independently inspect the same public sources and must agree on one categorical outcome:
 
@@ -11,7 +11,7 @@ ModAppeal makes moderation appeals auditable without giving one administrator th
 - `PARTIAL_VIOLATION`
 - `INSUFFICIENT_EVIDENCE`
 
-The contract keeps validator reasoning separate from settlement. After consensus, deterministic contract code moves the appeal to `ADJUDICATED`, then `FINALIZED`, and exposes the recorded appellant or community-owner credit through `claim_bond()`.
+The contract keeps validator reasoning separate from settlement. Unavailable sources and mismatched commitments are excluded from the validator record and attributed to the party that submitted them. Deterministic contract code then moves the appeal to `ADJUDICATED`, then `FINALIZED`, and exposes the recorded appellant or community-owner credit through `claim_bond()`.
 
 ## Contract workflow
 
@@ -30,12 +30,13 @@ The app is a static, wallet-connected dashboard. It reads canonical `LATEST_FINA
 
 ## Live end-to-end proof
 
-The final deployment passed the entire production workflow on Studionet: community and immutable policy creation, moderator registration, action recording, a 1 GEN bonded appeal, evidence from both sides, validator adjudication, finalization, and bond claim. Validators independently fetched the SHA-256-pinned content and both evidence files. All three hashes were `VERIFIED`; the finalized verdict was `ACTION_OVERTURNED` at 100 confidence, and the appellant reclaimed the full bond.
+The v1.1 deployment passed an adversarial production workflow on Studionet. The appellant submitted a deliberately mismatched SHA-256 evidence commitment, then validators independently evaluated only the verified disputed content. Consensus returned `ACTION_OVERTURNED` at 92 confidence, but the contract attributed one invalid item to the appellant and applied `APPELLANT_INVALID_EVIDENCE_FORFEITURE`. The appellant received 0; the community received and claimed the entire 1 GEN bond. The final contract balance is 0.
 
-- Case: `case-final-20260922`
-- Adjudication transaction: https://explorer-studio.genlayer.com/tx/0xeab6ca73e51559b0d15b786f126e40393694445085f4fc460972ac35b0a41253
-- Finalization transaction: https://explorer-studio.genlayer.com/tx/0xbd34baca35ab53319d4aabc6798ffb20d4c24d205c4e75d68d52722a4de755b6
-- Bond claim transaction: https://explorer-studio.genlayer.com/tx/0x002624f942e68d8d081fd675b9f734adfdb7d729df0004c96dbef70bd214a8bb
+- Case: `case-malicious-20260924`
+- Malicious commitment transaction: https://explorer-studio.genlayer.com/tx/0xa7ec0e855c8209c34404ca63eb21a6cd66432907d636ad4c3ff789adb7fa4703
+- Adjudication transaction: https://explorer-studio.genlayer.com/tx/0x05bd42914ec94d60a55c057e0d35c4ece4f8d770babb135e14fbbc068f519f90
+- Finalization transaction: https://explorer-studio.genlayer.com/tx/0x478e1882e23b1f3927c99809b90052426c1ad1908797863e576fc1a6f09b13b7
+- Bond claim transaction: https://explorer-studio.genlayer.com/tx/0xb89af82170bf4c7e6319ad2caa831ceae98ed4a3c03ee5360a5f82bcf798758d
 - Machine-readable record: `deploy/live-test.json`
 
 ## Safety model
@@ -44,5 +45,10 @@ The final deployment passed the entire production workflow on Studionet: communi
 - Moderation actions pin the policy version, content URL, and content fingerprint.
 - Evidence URLs must be HTTPS, are deduplicated, and carry a committed SHA-256 fingerprint.
 - Validators adjudicate only the exact bytes whose SHA-256 fingerprints match the on-chain commitments.
+- Each party has six independently reserved evidence slots, so neither side can crowd out the other.
+- `MISMATCH` and `UNAVAILABLE` submissions are attributed to their submitter instead of poisoning the whole case.
+- An appellant evidence fault forfeits the bond to the community; a moderator/content fault refunds it to the appellant; faults by both sides split it.
 - Web content is treated as untrusted evidence; prompt instructions found in pages are ignored.
 - Bond accounting is deterministic and happens only after validator classification.
+
+The 20-test behavioral suite covers malicious hash commitments, source fetch failures on either side, evidence-capacity crowd-out, disputed-content failures, dual-role claims, and every resulting bond allocation.

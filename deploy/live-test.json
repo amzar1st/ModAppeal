@@ -1,15 +1,21 @@
 {
   "network": "studionet",
-  "contractAddress": "0x5f4d4256736DC7B9288F4c02796c6A4c1b4B47c2",
-  "communityId": "modappeal-final-20260922",
-  "caseId": "case-final-20260922",
+  "contractVersion": "1.1.0",
+  "contractAddress": "0x1Bc7cB40DB3781E835Ba23fF7E3a76698dF71d13",
+  "communityId": "modappeal-steward-20260924",
+  "caseId": "case-malicious-20260924",
   "result": {
     "status": "FINALIZED",
     "verdict": "ACTION_OVERTURNED",
-    "confidence": 100,
+    "confidence": 92,
     "contentHashStatus": "VERIFIED",
-    "evidenceHashStatuses": ["VERIFIED", "VERIFIED"],
-    "appellantBondClaimed": true
+    "evidenceHashStatuses": ["MISMATCH"],
+    "appellantInvalidEvidence": 1,
+    "moderatorInvalidEvidence": 0,
+    "settlementRule": "APPELLANT_INVALID_EVIDENCE_FORFEITURE",
+    "appellantCreditWei": "0",
+    "communityCreditWei": "1000000000000000000",
+    "communityBondClaimed": true
   },
   "protocolStats": {
     "totalCommunities": 1,
@@ -24,17 +30,16 @@
     "contractBalanceWei": "0"
   },
   "transactions": {
-    "deploy": "0x0b25ce86ed02f6c461622d55a0f1dea0c9c3b4cf5d4708ca348980619876e528",
-    "createCommunity": "0x22bd2c9608226f1dc453ccfb9ac10e4710d6ac5282e3e32bf79357d770f32420",
-    "publishPolicy": "0xe7343cda2cd06688d0d647e19ac1f98d79537fe2c425375d125b754a0c92f138",
-    "registerModerator": "0xb5b59ad9879cef1d695b3d9f437862dda7fbbc28ce50ea5997469fb40e439996",
-    "recordAction": "0x74398a9f701f1caefb4472c0b9096be4756264bfff2b7af83bf6e413b6ad9f8a",
-    "openAppeal": "0xaab846ef47c0ea54d3ae4866091923be9f6a51ca686c4a85c9341c7504ad12a2",
-    "submitEvidence": "0xdfef3c87988ec147318273c4fb9a08a72dcfc6b17914444eab796caf09c4f67c",
-    "submitCounterEvidence": "0x24b67c8bbc63d5382d01e76c821433a1de28e4229f3c3dfdfd39dc17e9c576ec",
-    "adjudicate": "0xeab6ca73e51559b0d15b786f126e40393694445085f4fc460972ac35b0a41253",
-    "finalize": "0xbd34baca35ab53319d4aabc6798ffb20d4c24d205c4e75d68d52722a4de755b6",
-    "claimBond": "0x002624f942e68d8d081fd675b9f734adfdb7d729df0004c96dbef70bd214a8bb"
+    "deploy": "0x215d3b46b03dfcdd696058082461ef872e491192a064191d78acfb846337cc03",
+    "createCommunity": "0xf90a592c61d6a9b19c380be5cefdae118b725c0912726b5ea00437b166bc5382",
+    "publishPolicy": "0xcc88186abe481fef10a65c109fbdf639d4e1bc88cf056540072c4619c90d93a0",
+    "registerModerator": "0x7dc29eb751544e2b55aee24aac77a8abbd9453a808771c16ffa98c25633c0669",
+    "recordAction": "0x1e9023aafc9ccc303061bb80899f5643b6678dfa871d20ecd1c35817b2b673f4",
+    "openAppeal": "0xd6e33b604b879482d6e854b57bddc043e466aa4de1e0a365a60f8801456696b0",
+    "submitMaliciousEvidence": "0xa7ec0e855c8209c34404ca63eb21a6cd66432907d636ad4c3ff789adb7fa4703",
+    "adjudicate": "0x05bd42914ec94d60a55c057e0d35c4ece4f8d770babb135e14fbbc068f519f90",
+    "finalize": "0x478e1882e23b1f3927c99809b90052426c1ad1908797863e576fc1a6f09b13b7",
+    "claimBond": "0xb89af82170bf4c7e6319ad2caa831ceae98ed4a3c03ee5360a5f82bcf798758d"
   },
-  "verifiedAt": "2026-09-22T08:58:58Z"
+  "verifiedAt": "2026-09-24"
 }

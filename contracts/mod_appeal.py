@@ -19,7 +19,7 @@ ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
 MIN_APPEAL_BOND_WEI = 10**15  # 0.001 GEN
 MIN_DEADLINE_LEAD_SECONDS = 30
 MAX_APPEAL_WINDOW_SECONDS = 14 * 24 * 60 * 60
-MAX_EVIDENCE_ITEMS = 12
+MAX_EVIDENCE_PER_SIDE = 6
 MAX_SOURCE_CHARS = 7_500
 
 
@@ -108,6 +108,90 @@ def _decision_is_valid(decision: typing.Any) -> bool:
         and isinstance(decision.get("reason"), str)
         and 0 < len(decision.get("reason")) <= 700
     )
+
+
+def _has_evidence_slot(
+    appellant_count: int,
+    moderator_count: int,
+    side: str,
+) -> bool:
+    """Reserve an independent evidence quota for each party."""
+    if side == "APPELLANT":
+        return appellant_count < MAX_EVIDENCE_PER_SIDE
+    if side == "MODERATOR":
+        return moderator_count < MAX_EVIDENCE_PER_SIDE
+    return False
+
+
+def _audit_evidence(
+    evidence_sides: list[str],
+    evidence_statuses: list[str],
+    content_status: str,
+) -> dict[str, typing.Any]:
+    """Attribute bad commitments and identify evidence safe for review."""
+    valid_indices: list[int] = []
+    appellant_faults = 0
+    moderator_faults = 0 if content_status == "VERIFIED" else 1
+
+    for index, status in enumerate(evidence_statuses):
+        if status == "VERIFIED":
+            valid_indices.append(index)
+        elif evidence_sides[index] == "APPELLANT":
+            appellant_faults += 1
+        else:
+            moderator_faults += 1
+
+    return {
+        "valid_indices": valid_indices,
+        "appellant_faults": appellant_faults,
+        "moderator_faults": moderator_faults,
+    }
+
+
+def _allocate_bond(
+    verdict: str,
+    bond: int,
+    appellant_faults: int,
+    moderator_faults: int,
+) -> dict[str, typing.Any]:
+    """Allocate the bond without rewarding the party that poisoned evidence."""
+    if appellant_faults > 0 and moderator_faults > 0:
+        appellant_credit = bond // 2
+        return {
+            "appellant_credit": appellant_credit,
+            "community_credit": bond - appellant_credit,
+            "rule": "BOTH_PARTIES_INVALID_EVIDENCE_SPLIT",
+        }
+    if appellant_faults > 0:
+        return {
+            "appellant_credit": 0,
+            "community_credit": bond,
+            "rule": "APPELLANT_INVALID_EVIDENCE_FORFEITURE",
+        }
+    if moderator_faults > 0:
+        return {
+            "appellant_credit": bond,
+            "community_credit": 0,
+            "rule": "MODERATOR_INVALID_EVIDENCE_REFUND",
+        }
+    if verdict in ("ACTION_OVERTURNED", "INSUFFICIENT_EVIDENCE"):
+        return {
+            "appellant_credit": bond,
+            "community_credit": 0,
+            "rule": "VERDICT_APPELLANT_CREDIT",
+        }
+    if verdict == "VIOLATION_CONFIRMED":
+        return {
+            "appellant_credit": 0,
+            "community_credit": bond,
+            "rule": "VERDICT_COMMUNITY_CREDIT",
+        }
+    appellant_credit = bond // 2
+    return {
+        "appellant_credit": appellant_credit,
+        "community_credit": bond - appellant_credit,
+        "rule": "PARTIAL_VIOLATION_SPLIT",
+    }
 
 
 class ModAppeal(gl.Contract):
@@ -232,9 +316,11 @@ class ModAppeal(gl.Contract):
             raise gl.vm.UserError("Evidence fingerprint must be a 64-character SHA-256 hash")
         if len(note.strip()) > 500:
             raise gl.vm.UserError("Evidence note is too long")
-        if len(self.evidence[case_id]) >= MAX_EVIDENCE_ITEMS:
-            raise gl.vm.UserError("Evidence limit reached")
-        evidence_key = case_id + "|" + url.lower()
+        appellant_count = int(case.get("appellant_evidence_count", 0))
+        moderator_count = int(case.get("moderator_evidence_count", 0))
+        if not _has_evidence_slot(appellant_count, moderator_count, side):
+            raise gl.vm.UserError("This party's reserved evidence capacity is full")
+        evidence_key = case_id + "|" + side + "|" + url.lower()
         if self.evidence_seen.get(evidence_key, False) is True:
             raise gl.vm.UserError("This evidence URL was already submitted")
 
@@ -248,6 +334,11 @@ class ModAppeal(gl.Contract):
         }
         self.evidence[case_id].append(json.dumps(record, sort_keys=True))
         self.evidence_seen[evidence_key] = True
+        if side == "APPELLANT":
+            case["appellant_evidence_count"] = appellant_count + 1
+        else:
+            case["moderator_evidence_count"] = moderator_count + 1
+        self.cases[case_id] = json.dumps(case, sort_keys=True)
 
     def _verify_snapshot(self, source_url: str, expected_sha256: str) -> dict[str, str]:
         """Consensus-check and return text from the committed HTTPS bytes."""
@@ -510,6 +601,11 @@ MODAPPEAL_DATA_END
             "appeal_bond": "0",
             "appellant_credit": "0",
             "community_credit": "0",
+            "appellant_evidence_count": 0,
+            "moderator_evidence_count": 0,
+            "appellant_invalid_evidence": 0,
+            "moderator_invalid_evidence": 0,
+            "settlement_rule": "",
             "appellant_claimed": False,
             "community_claimed": False,
             "verdict": "",
@@ -580,42 +676,55 @@ MODAPPEAL_DATA_END
         for encoded in self.evidence[case_id]:
             items.append(json.loads(encoded))
 
-        if len(items) == 0:
-            decision = _empty_decision("No public evidence was committed before the deadline.")
-        else:
-            content_snapshot = self._verify_snapshot(case["content_url"], case["content_sha256"])
-            evidence_statuses: list[str] = []
-            evidence_texts: list[str] = []
-            for item in items:
-                snapshot = self._verify_snapshot(item["source_url"], item["source_sha256"])
-                evidence_statuses.append(snapshot["status"])
-                evidence_texts.append(snapshot["text"])
-            case["content_hash_status"] = content_snapshot["status"]
-            case["evidence_hash_statuses"] = json.dumps(evidence_statuses)
-            if content_snapshot["status"] != "VERIFIED" or any(status != "VERIFIED" for status in evidence_statuses):
-                decision = _empty_decision(
-                    "The committed content or evidence bytes could not be verified against their SHA-256 fingerprints."
-                )
-            else:
-                decision = self._review_case(
-                    case,
-                    items,
-                    content_snapshot["text"],
-                    evidence_texts,
-                )
-            if not _decision_is_valid(decision):
-                raise gl.vm.UserError("Validator consensus returned an invalid decision")
+        content_snapshot = self._verify_snapshot(case["content_url"], case["content_sha256"])
+        evidence_statuses: list[str] = []
+        evidence_texts: list[str] = []
+        evidence_sides: list[str] = []
+        for item in items:
+            snapshot = self._verify_snapshot(item["source_url"], item["source_sha256"])
+            evidence_statuses.append(snapshot["status"])
+            evidence_texts.append(snapshot["text"])
+            evidence_sides.append(item["side"])
 
-        appellant_credit = u256(0)
-        community_credit = u256(0)
-        bond = u256(int(case["appeal_bond"]))
-        if decision["verdict"] in ("ACTION_OVERTURNED", "INSUFFICIENT_EVIDENCE"):
-            appellant_credit = bond
-        elif decision["verdict"] == "VIOLATION_CONFIRMED":
-            community_credit = bond
+        audit = _audit_evidence(
+            evidence_sides,
+            evidence_statuses,
+            content_snapshot["status"],
+        )
+        verified_items: list[dict[str, typing.Any]] = []
+        verified_texts: list[str] = []
+        for index in audit["valid_indices"]:
+            verified_items.append(items[index])
+            verified_texts.append(evidence_texts[index])
+
+        case["content_hash_status"] = content_snapshot["status"]
+        case["evidence_hash_statuses"] = json.dumps(evidence_statuses)
+        case["appellant_invalid_evidence"] = audit["appellant_faults"]
+        case["moderator_invalid_evidence"] = audit["moderator_faults"]
+
+        if content_snapshot["status"] != "VERIFIED":
+            decision = _empty_decision(
+                "The moderator's disputed-content commitment was unavailable or did not match its SHA-256 fingerprint."
+            )
         else:
-            appellant_credit = bond // u256(2)
-            community_credit = bond - appellant_credit
+            decision = self._review_case(
+                case,
+                verified_items,
+                content_snapshot["text"],
+                verified_texts,
+            )
+        if not _decision_is_valid(decision):
+            raise gl.vm.UserError("Validator consensus returned an invalid decision")
+
+        bond = int(case["appeal_bond"])
+        allocation = _allocate_bond(
+            decision["verdict"],
+            bond,
+            int(audit["appellant_faults"]),
+            int(audit["moderator_faults"]),
+        )
+        appellant_credit = u256(int(allocation["appellant_credit"]))
+        community_credit = u256(int(allocation["community_credit"]))
 
         case["status"] = "ADJUDICATED"
         case["verdict"] = decision["verdict"]
@@ -623,6 +732,7 @@ MODAPPEAL_DATA_END
         case["verdict_reason"] = decision["reason"]
         case["appellant_credit"] = str(appellant_credit)
         case["community_credit"] = str(community_credit)
+        case["settlement_rule"] = allocation["rule"]
         case["adjudicated_at"] = self._now()
         self.cases[case_id] = json.dumps(case, sort_keys=True)
         self.total_adjudicated += u256(1)
@@ -644,20 +754,20 @@ MODAPPEAL_DATA_END
         if case["status"] != "FINALIZED":
             raise gl.vm.UserError("Appeal must be finalized before a bond is claimed")
         sender = self._sender()
+        community = self._community(case["community_id"])
+        is_appellant = sender.lower() == str(case["appellant"]).lower()
+        is_owner = sender.lower() == str(community["owner"]).lower()
         amount = u256(0)
-        if sender.lower() == str(case["appellant"]).lower():
-            if case["appellant_claimed"] or int(case["appellant_credit"]) == 0:
-                raise gl.vm.UserError("Appellant credit is unavailable or already claimed")
+        if is_appellant and not case["appellant_claimed"] and int(case["appellant_credit"]) > 0:
             amount = u256(int(case["appellant_credit"]))
             case["appellant_claimed"] = True
-        else:
-            community = self._community(case["community_id"])
-            if sender.lower() != str(community["owner"]).lower():
-                raise gl.vm.UserError("Only the appellant or community owner can claim a bond")
-            if case["community_claimed"] or int(case["community_credit"]) == 0:
-                raise gl.vm.UserError("Community credit is unavailable or already claimed")
+        elif is_owner and not case["community_claimed"] and int(case["community_credit"]) > 0:
             amount = u256(int(case["community_credit"]))
             case["community_claimed"] = True
+        elif is_appellant or is_owner:
+            raise gl.vm.UserError("The caller's bond credit is unavailable or already claimed")
+        else:
+            raise gl.vm.UserError("Only the appellant or community owner can claim a bond")
 
         self.cases[case_id] = json.dumps(case, sort_keys=True)
         self.total_paid += amount
@@ -678,6 +788,8 @@ MODAPPEAL_DATA_END
     def get_case(self, case_id: str) -> dict[str, typing.Any]:
         case = self._case(case_id)
         case["evidence_count"] = len(self.evidence[case_id])
+        case["appellant_evidence_capacity"] = MAX_EVIDENCE_PER_SIDE
+        case["moderator_evidence_capacity"] = MAX_EVIDENCE_PER_SIDE
         return case
 
     @gl.public.view
@@ -691,6 +803,9 @@ MODAPPEAL_DATA_END
             "reason": case["verdict_reason"],
             "appellant_credit": case["appellant_credit"],
             "community_credit": case["community_credit"],
+            "settlement_rule": case.get("settlement_rule", ""),
+            "appellant_invalid_evidence": case.get("appellant_invalid_evidence", 0),
+            "moderator_invalid_evidence": case.get("moderator_invalid_evidence", 0),
             "finalized_at": case["finalized_at"],
         }
 
@@ -727,7 +842,8 @@ MODAPPEAL_DATA_END
         return {
             "name": "ModAppeal",
             "full_name": "ModAppeal — Decentralized Community Moderation & Appeal Protocol",
-            "version": "1.0.0",
+            "version": "1.1.0",
             "consensus": "Independent public-source retrieval with categorical validator agreement",
             "outcomes": "VIOLATION_CONFIRMED,ACTION_OVERTURNED,PARTIAL_VIOLATION,INSUFFICIENT_EVIDENCE",
+            "evidence_policy": "Six reserved slots per side; invalid commitments are excluded and attributed",
         }

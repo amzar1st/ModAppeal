@@ -2,7 +2,8 @@
   "contractName": "ModAppeal",
   "network": "studionet",
   "chainId": 61999,
-  "contractAddress": "0x5f4d4256736DC7B9288F4c02796c6A4c1b4B47c2",
-  "deploymentTransaction": "0x0b25ce86ed02f6c461622d55a0f1dea0c9c3b4cf5d4708ca348980619876e528",
-  "deployedAt": "2026-09-22T08:34:42Z"
+  "contractVersion": "1.1.0",
+  "contractAddress": "0x1Bc7cB40DB3781E835Ba23fF7E3a76698dF71d13",
+  "deploymentTransaction": "0x215d3b46b03dfcdd696058082461ef872e491192a064191d78acfb846337cc03",
+  "deployedAt": "2026-09-24"
 }

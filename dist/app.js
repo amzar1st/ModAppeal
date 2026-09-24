@@ -1,4 +1,4 @@
-const CONTRACT_ADDRESS = "0x5f4d4256736DC7B9288F4c02796c6A4c1b4B47c2";
+const CONTRACT_ADDRESS = "0x1Bc7cB40DB3781E835Ba23fF7E3a76698dF71d13";
 const CHAIN_ID = 61999;
 const RPC_URL = "https://studio.genlayer.com/api";
 const EXPLORER_URL = "https://explorer-studio.genlayer.com";
